@@ -71,7 +71,7 @@ def is_prime(n, k):
 ###
 # Test is_prime()
 #
-# print(is_prime(10000004875, 20))
+# print(is_prime(96, 20))
 
 
 # функція для знаходження випадкового простого числа в діапазоні (або по кількості бітів!)
@@ -208,30 +208,28 @@ user_B = GenerateKeyPair(p1, q1)
 # 4 task
 
 
-# шифрує повідомлення (переводить кожен символ в юнікод значення та шифрує його)
+# шифрує повідомлення
 def encrypt(message, public_key):
     e, n = public_key
-    encrypted_message = [pow(ord(char), e, n) for char in message]
+    encrypted_message = power(message, e, n)
 
     return encrypted_message
 
 
-# розшифровує повідомлення (буквально навпаки, кожне зашифроване значення розшифровує, отримує символ і конкатенує його)
+# розшифровує повідомлення
 def decrypt(encrypted_message, private_key):
     d, p, q = private_key
     n = p * q
-    decrypted_message = ''.join([chr(pow(char, d, n)) for char in encrypted_message])
+    decrypted_message = power(encrypted_message, d, n)
 
     return decrypted_message
 
 
-# створює підпис (використовує хешування,
-# бо звичайними інструментами неможливо перевірити автентичність великого повідомлення)
+# створює підпис
 def create_signature(message, private_key):
     d, p, q = private_key
     n = p * q
-    hashed_message = hashlib.sha256(message.encode()).digest()
-    signature = pow(int.from_bytes(hashed_message, 'big'), d, n)
+    signature = power(message, d, n)
 
     return signature
 
@@ -239,47 +237,72 @@ def create_signature(message, private_key):
 # перевіряє автентичність повідомлення порівнюючи підписи (виводить True або False)
 def verify_signature(signature, public_key, message):
     e, n = public_key
-    decrypted_signature = pow(signature, e, n)
-    hashed_original_message = hashlib.sha256(message.encode()).digest()
+    decrypted_signature = power(signature, e, n)
 
-    return int.from_bytes(hashed_original_message, 'big') == decrypted_signature
+    return message == decrypted_signature
 
 
 # "розпакуємо" ключі користувачів для зручності
 public_key_A, private_key_A = user_A
 public_key_B, private_key_B = user_B
 
+print('Публічний ключ:', public_key_A)
+print('Приватиний ключ:', private_key_A)
+
+
 # ввід якогось повідомлення
-message = 'hello everynyan'
+message = random_prime(bits=128)
+
+print('Відкрите повідомлення:')
+print(message)
 
 # перевіримо шифрування повідомлень для абонентів A та B
 enc_message_A = encrypt(message, public_key_A)
-enc_message_B = encrypt(message, public_key_B)
 
-# print("Зашифровані повідомлення:")
-# print(enc_message_A)
-# print(enc_message_B)
+print("Зашифроване повідомлення:")
+print(enc_message_A)
 
 # перевіримо розшифрування для абонентів A та B
 dec_message_A = decrypt(enc_message_A, private_key_A)
-dec_message_B = decrypt(enc_message_B, private_key_B)
 
-# print("Розшифровані повідомлення:")
-# print(dec_message_A)
-# print(dec_message_B)
+print("Розшифроване повідомлення:")
+print(dec_message_A)
 
 # створимо підпис для повідомлення
 signature_A = create_signature(message, private_key_A)
 
-# print("Цифровий підпис:")
-# print(signature_A)
+print("Цифровий підпис:")
+print(signature_A)
 
 # перевіримо підпис
 verified_signature_A = verify_signature(signature_A, public_key_A, message)
 
-# print(f"Повідомлення є автентичним - {verified_signature_A}")
+print(f"Повідомлення є автентичним - {verified_signature_A}")
 
 
+# 5 task
+def send_key(k, key, private_key):
+    s = create_signature(k, private_key)
+    s1 = encrypt(s, key)
+    k1 = encrypt(k, key)
+
+    print(f's - {s}\ns1 - {s1}\nk1 - {k1}')
+
+    return k1, s1
 
 
+def receive_key(k1, s1, key, private_key):
+    k = decrypt(k1, private_key)
+    s = decrypt(s1, private_key)
 
+    print(f'k - {k}\ns - {s}')
+
+    return verify_signature(s, key, k)
+
+
+# create new message for protocol
+k = random_prime(bits=128)
+print(f'k - {k}')
+
+k1, s1 = send_key(k, public_key_B, private_key_A)
+print(receive_key(k1, s1, public_key_A, private_key_B))
